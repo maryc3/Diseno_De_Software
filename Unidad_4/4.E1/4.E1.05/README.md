@@ -1,43 +1,40 @@
-# 4.E.1 – Ejercicio 5: Monitor de Sensores de Humo en Edificio Inteligente
+# Ejercicio 4.E1.05 – Sistema de Detección de Humo
 
-**Objetivo:** controlar la interacción en escenarios con **varios sujetos** y varios observadores mediante una arquitectura desacoplada.
+## Descripción
 
-## Archivos
+Este ejercicio consiste en simular un sistema de seguridad para un edificio, donde diferentes sensores detectan la presencia de humo y envían alertas a los sistemas encargados de responder ante una emergencia.
 
-| Archivo | Rol |
-|---|---|
-| `AlertaHumo` | *Record* con id del sensor, piso y zona (la "ubicación exacta"). |
-| `ObservadorAlarma` | **Interfaz Observer** que implementa todo sistema de respuesta. |
-| `SensorHumo` | **Sujeto.** Hay un objeto por sensor (3 en el ejemplo). `detectarHumo()` simula el incendio. |
-| `CentralAlarmas`, `SistemaRociadores`, `ServicioConserjeria` | Observadores iniciales. |
-| `ControlAscensores` | Observador **nuevo**, agregado después para demostrar extensibilidad. |
-| `Main` | Crea 3 sensores y suscribe los sistemas. |
+Para desarrollarlo se utiliza el patrón de diseño **Observer**, que permite que varios sistemas reciban notificaciones cuando un sensor detecta humo.
 
-## Por qué está hecho así
-- **Muchos a muchos:** la central y los rociadores escuchan los **tres** sensores; conserjería solo los pisos 1 y 2. Un mismo observador puede escuchar varias fuentes (restricción técnica 1).
-- **Principio abierto/cerrado:** `ControlAscensores` se agrega en `Main` con una línea (`sensor3.suscribir(...)`) y **no se modifica nada** en `SensorHumo` (restricción técnica 2).
-- Los rociadores actúan **solo en la zona del evento** porque la alerta lleva la ubicación.
+## ¿Cómo funciona?
 
-## Cómo ejecutarlo
-Clic derecho sobre `src/unidad4/E1/Main.java` → **Run 'Main.main()'**.
+Se crean diferentes sensores ubicados en distintos pisos y zonas del edificio. Cada sensor puede tener registrados uno o varios observadores.
 
-## Qué tiene que verse
-```
-=== Deteccion en piso 2 ===
-!!! Sensor S-02 detecto humo en piso 2, Oficinas
-   [Central de alarmas] Sirena activada. Ubicacion: piso 2, Oficinas
-   [Rociadores] Activando rociadores solo en piso 2, Oficinas
-   [Conserjeria] Aviso al personal: revisar piso 2, Oficinas
-=== Deteccion en piso 3 (ya con el sistema de ascensores) ===
-!!! Sensor S-03 detecto humo en piso 3, Archivo
-   [Central de alarmas] Sirena activada. Ubicacion: piso 3, Archivo
-   [Rociadores] Activando rociadores solo en piso 3, Archivo
-   [Ascensores] Bloqueados y enviados a planta baja (alerta en piso 3)
-```
-En el piso 2 responden tres sistemas; en el piso 3 conserjería **no** está suscrita pero sí los ascensores nuevos.
+Cuando un sensor detecta humo, genera una alerta con la información de su ubicación y notifica a los sistemas que están suscritos.
 
-## Requisitos cubiertos
-- [x] Simular detección con ubicación exacta
-- [x] Activar respuestas coordinadas de los sistemas vinculados a la zona
-- [x] Varios sistemas escuchan una o varias fuentes
-- [x] Nuevo tipo de dispositivo sin modificar los sensores
+Cada observador realiza una acción diferente, como activar la alarma, encender los rociadores o avisar al personal de conserjería.
+
+Además, se incorpora un nuevo sistema para controlar los ascensores sin necesidad de modificar el código del sensor.
+
+## Clases del ejercicio
+
+- **SensorHumo.java:** representa un sensor ubicado en una zona del edificio. Detecta humo y notifica a los observadores registrados.
+- **ObservadorAlarma.java:** es la interfaz que deben implementar los sistemas que reciben las alertas.
+- **AlertaHumo.java:** contiene los datos de la alerta, como el identificador del sensor, el piso y la zona donde se detectó humo.
+- **CentralAlarmas.java:** recibe las alertas y activa la sirena indicando la ubicación.
+- **SistemaRociadores.java:** recibe las alertas y activa los rociadores en la zona correspondiente.
+- **ServicioConserjeria.java:** recibe las alertas y avisa al personal para que revise el lugar.
+- **ControlAscensores.java:** representa un nuevo sistema que bloquea los ascensores y los envía a planta baja cuando se detecta humo.
+- **Main.java:** contiene el método principal, donde se crean los sensores, se registran los observadores y se simulan las detecciones de humo.
+
+## Resultado de la ejecución
+
+Se crean tres sensores ubicados en diferentes pisos del edificio: Hall, Oficinas y Archivo.
+
+Primero se simula una detección de humo en el segundo piso. La central de alarmas, los rociadores y el servicio de conserjería reciben la notificación.
+
+Después se incorpora el control de ascensores como un nuevo observador y se simula otra detección en el tercer piso. En este caso, se activan la central de alarmas, los rociadores y el control de ascensores.
+
+## Captura del resultado
+
+![Resultado de la ejecución del ejercicio 4.E1.05](Compilado.4.E1.05.png)

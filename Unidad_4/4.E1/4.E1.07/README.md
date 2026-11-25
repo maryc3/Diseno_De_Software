@@ -1,50 +1,56 @@
-# 4.E.1 – Ejercicio 7: Sistema de Suscripción a Canales de Noticias Digitales
+# 4.E1.07 - Sistema de Suscripciones a Noticias por Temática
 
-**Objetivo:** un Observer con suscripciones **filtradas y selectivas** bajo múltiples tópicos.
+## Descripción
 
-## Archivos
+Este ejercicio implementa el patrón de diseño **Observer** para desarrollar un portal de noticias en el que los lectores pueden suscribirse a diferentes categorías y recibir notificaciones cuando se publica una noticia relacionada con ellas.
 
-| Archivo | Rol |
-|---|---|
-| `Categoria` | Enum: `TECNOLOGIA`, `DEPORTES`, `ECONOMIA`. |
-| `Noticia` | *Record* con los metadatos del artículo (categoría y título). |
-| `ObservadorNoticias` | **Interfaz unificada** de los clientes. |
-| `PortalNoticias` | **Sujeto / gestor de eventos.** Un `EnumMap<Categoria, lista de observadores>`. |
-| `Lector` | Observador: guarda los avisos en su bandeja. |
-| `Main` | Tres lectores con distintas suscripciones. |
+El objetivo es que cada lector reciba únicamente las noticias de los temas que le interesan, sin necesidad de consultar constantemente el portal.
 
-## Por qué está hecho así
-- Una lista por categoría: al publicar se recorre **solo** la lista de esa categoría, así que un lector nunca recibe lo que no pidió.
-- `EnumMap` es la estructura natural para indexar por enum (rápida y ordenada).
-- `suscribir` y `cancelar` reciben la categoría y el lector, cubriendo el requisito de alta/baja por categoría.
+## ¿Cómo funciona?
 
-> **Nota sobre el enunciado:** en el PDF, el último punto de este ejercicio dice "gestor de eventos indexados por identificador de emisor" y "metadatos del video publicado" (parece texto copiado del ejercicio de video streaming). Lo interpreté como el equivalente para noticias: **indexado por categoría** y **metadatos del artículo**.
+El portal permite publicar noticias de tres categorías:
 
-## Cómo ejecutarlo
-Clic derecho sobre `src/unidad4/E1/Main.java` → **Run 'Main.main()'**.
+- **Tecnología**
+- **Deportes**
+- **Economía**
 
-## Qué tiene que verse
-```
->> Redactor publica en TECNOLOGIA: Nuevo procesador de 2 nm
-   Aviso para Ana: Nuevo procesador de 2 nm
-   Aviso para Beto: Nuevo procesador de 2 nm
->> Redactor publica en DEPORTES: Final de la copa este domingo
-   Aviso para Ana: Final de la copa este domingo
-   Aviso para Carla: Final de la copa este domingo
->> Redactor publica en ECONOMIA: El dolar cierra estable
-   Aviso para Beto: El dolar cierra estable
---- Ana cancela su suscripcion a TECNOLOGIA ---
->> Redactor publica en TECNOLOGIA: Lanzan un nuevo lenguaje de programacion
-   Aviso para Beto: Lanzan un nuevo lenguaje de programacion
---- Bandejas finales ---
-Bandeja de Ana (2 avisos): [[TECNOLOGIA] Nuevo procesador de 2 nm, [DEPORTES] Final de la copa este domingo]
-Bandeja de Beto (3 avisos): [[TECNOLOGIA] Nuevo procesador de 2 nm, [ECONOMIA] El dolar cierra estable, [TECNOLOGIA] Lanzan un nuevo lenguaje de programacion]
-Bandeja de Carla (1 avisos): [[DEPORTES] Final de la copa este domingo]
-```
-Cada noticia llega **solo** a los suscritos a su categoría, y tras cancelar, Ana ya no recibe tecnología.
+Los lectores pueden suscribirse a una o varias categorías. Cuando se publica una noticia, el portal notifica automáticamente a los lectores que están suscritos a esa temática.
 
-## Requisitos cubiertos
-- [x] Suscribirse / cancelar por categoría
-- [x] Solo reciben la noticia los suscritos a esa categoría
-- [x] Gestor de eventos indexado
-- [x] Clientes con interfaz unificada
+También es posible cancelar una suscripción. A partir de ese momento, el lector deja de recibir notificaciones de esa categoría.
+
+## Clases principales
+
+- `PortalNoticias`: funciona como sujeto observable. Administra las suscripciones de los lectores por categoría y notifica a los correspondientes cuando se publica una noticia.
+- `ObservadorNoticias`: interfaz que define el método `recibirNoticia()` que deben implementar los lectores.
+- `Lector`: representa a un usuario del portal. Recibe las notificaciones y guarda las noticias en su bandeja.
+- `Noticia`: representa una noticia mediante su categoría y título.
+- `Categoria`: enumera las categorías disponibles: Tecnología, Deportes y Economía.
+- `Main`: crea los lectores, establece sus suscripciones, publica noticias y muestra las bandejas finales.
+
+## Aplicación del patrón Observer
+
+El patrón Observer permite que el portal notifique automáticamente a los lectores cuando se publica una noticia de una categoría a la que están suscritos.
+
+El portal no necesita conocer los detalles de cada lector ni cómo procesa las noticias. Solamente utiliza la interfaz `ObservadorNoticias` para enviar las notificaciones.
+
+Además, las suscripciones se administran por categoría mediante un `EnumMap`, y se utiliza `CopyOnWriteArrayList` para manejar de forma segura la lista de observadores.
+
+## Ejecución del programa
+
+La clase `Main` crea tres lectores: Ana, Beto y Carla.
+
+Cada uno se suscribe a diferentes categorías:
+
+- Ana: Tecnología y Deportes.
+- Beto: Economía y Tecnología.
+- Carla: Deportes.
+
+Luego se publican tres noticias, una por cada categoría. Cada lector recibe solamente las notificaciones correspondientes a sus suscripciones.
+
+A continuación, Ana cancela su suscripción a Tecnología. Cuando se publica una nueva noticia de esa categoría, Ana ya no recibe la notificación, mientras que Beto sí.
+
+Finalmente, se muestran las bandejas de los tres lectores con las noticias que recibió cada uno.
+
+## Captura de ejecución
+
+![Resultado de la ejecución del ejercicio](Compilado.4.E1.07.png)

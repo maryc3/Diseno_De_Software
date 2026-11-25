@@ -1,46 +1,102 @@
-# 4.E.1 – Ejercicio 9: Motor Asíncrono de Eventos para Monitoreo de Servidores
+# 4.E1.09 – Motor de Eventos Avanzado para Microservicios
 
-**Objetivo:** combinar Observer con un **bus de eventos centralizado**, tipos de mensajes y control de suscripciones bajo concurrencia.
+## Descripción
 
-## Archivos
+Este ejercicio consiste en desarrollar un motor de eventos que permita comunicar diferentes microservicios mediante el patrón de diseño **Observer**.
 
-| Archivo | Rol |
-|---|---|
-| `TipoAlerta` | Enum: `CPU_AL_90`, `MEMORIA_INSUFICIENTE`, `FALLO_DE_DISCO`. |
-| `Severidad` | Enum: `INFO`, `ADVERTENCIA`, `CRITICA`. |
-| `EventoSistema` | *Record* estructurado: nodo de origen, tipo, severidad y cuerpo descriptivo. |
-| `ObservadorEvento` | **Interfaz Observer** (con un método `nombre()` por defecto para los mensajes de error). |
-| `BusEventos` | **El bus.** Mapa `TipoAlerta → lista de observadores`; `publicar` (síncrono), `publicarAsincrono` (pool de hilos) y `cerrar`. |
-| `MicroservicioEscalado`, `MicroservicioCache`, `MicroservicioRespaldo` | Microservicios que escuchan **un** tipo. |
-| `MicroservicioNotificaciones` | Escucha **los tres** tipos y está diseñado para **fallar** con memoria crítica. |
-| `ContadorEventos` | Observador silencioso con `AtomicInteger`, para la prueba de concurrencia. |
+La idea principal es que un componente central, llamado `BusEventos`, publique eventos del sistema y que los microservicios interesados reciban esos eventos automáticamente, sin que el emisor tenga que conocerlos directamente.
 
-## Por qué está hecho así
-- **Estructura indexada por tipo** (restricción técnica 1): un `ConcurrentHashMap<TipoAlerta, CopyOnWriteArrayList<...>>`. Para despachar solo se busca la lista del tipo, sin recorrer observadores que no interesan (despacho selectivo).
-- **Robusto ante excepciones** (restricción técnica 2): cada llamada a un observador va en su **propio `try/catch`**. Si falla, se informa y se continúa con los demás. En la demo, `MicroservicioNotificaciones` está registrado **antes** que `MicroservicioCache` en MEMORIA para demostrar que el fallo del primero no impide al segundo.
-- **Concurrencia:** el mapa es concurrente, las listas son `CopyOnWriteArrayList` y el contador usa `AtomicInteger`. La prueba envía 200 eventos desde un pool de 4 hilos y **no se pierde ninguno**.
-- La prueba de concurrencia usa un **bus aparte** con solo el contador, para no inundar la consola de mensajes.
+El sistema permite realizar notificaciones selectivas según el tipo de alerta, manejar errores de los observadores y procesar eventos de manera concurrente.
 
-## Cómo ejecutarlo
-Clic derecho sobre `src/unidad4/E1/Main.java` → **Run 'Main.main()'**.
+## Objetivo
 
-## Qué tiene que verse
-```
-=== 1) Despacho selectivo por tipo ===
-   [Escalado] Levantando una instancia adicional por: CPU sostenida al 92%
-   [Notificaciones] Mail enviado: CPU_AL_90 en nodo-A
-   [Respaldo] Backup de emergencia iniciado en nodo-B
-   [Notificaciones] Mail enviado: FALLO_DE_DISCO en nodo-B
-=== 2) Un observador falla y los demas igual reciben el evento ===
-   [BUS] Fallo en MicroservicioNotificaciones: el servidor SMTP no responde (se continua con los demas)
-   [Cache] Liberando cache en nodo-C (Memoria libre < 2%)
-=== 3) Concurrencia: 200 eventos publicados desde hilos del bus ===
-Eventos recibidos por el contador: 200 (esperado: 200)
-```
-Puntos clave: (1) el evento de CPU **no** llega a Respaldo ni a Cache; (2) aunque Notificaciones falló, **Cache sí recibió** el evento; (3) el contador llega **exactamente a 200**.
+Aplicar el patrón Observer en un sistema de eventos que permita:
 
-## Requisitos cubiertos
-- [x] Publicar eventos con código de severidad y cuerpo descriptivo
-- [x] Despachar solo a los registrados para ese tipo
-- [x] Estructuras indexadas por tipo de alerta
-- [x] Robusto ante excepciones de observadores individuales
+- Notificar a distintos microservicios cuando ocurre un evento.
+- Enviar cada evento solamente a los observadores suscritos a su tipo de alerta.
+- Evitar que el fallo de un observador interrumpa la notificación a los demás.
+- Permitir la publicación de eventos de forma sincrónica y asincrónica.
+- Trabajar con varios hilos de ejecución de manera segura.
+
+## Aplicación del patrón Observer
+
+En este ejercicio, `BusEventos` funciona como el sujeto que administra las suscripciones y distribuye los eventos.
+
+Los microservicios implementan la interfaz `ObservadorEvento`, por lo que pueden suscribirse a los tipos de alertas que necesitan recibir.
+
+Cuando se publica un evento, el bus busca los observadores registrados para ese tipo de alerta y les notifica lo ocurrido.
+
+De esta manera, los microservicios pueden recibir información sin estar directamente acoplados entre sí.
+
+## Estructura del proyecto
+
+Las clases principales son:
+
+- **BusEventos:** administra los observadores y distribuye los eventos según su tipo. Permite publicar eventos de forma sincrónica y asincrónica.
+- **ObservadorEvento:** interfaz que deben implementar los componentes que desean recibir eventos.
+- **EventoSistema:** representa un evento e incluye el nodo de origen, el tipo de alerta, la severidad y una descripción.
+- **TipoAlerta:** enumera los tipos de alertas disponibles: CPU al 90 %, memoria insuficiente y fallo de disco.
+- **Severidad:** define los niveles de importancia de un evento: información, advertencia y crítica.
+- **MicroservicioNotificaciones:** recibe alertas y simula el envío de correos electrónicos. También permite probar qué sucede cuando un observador falla.
+- **MicroservicioCache:** recibe determinados eventos y simula la liberación de la caché.
+- **MicroservicioEscalado:** responde a las alertas de CPU simulando la creación de una instancia adicional.
+- **MicroservicioRespaldo:** responde a los fallos de disco iniciando un respaldo de emergencia.
+- **ContadorEventos:** cuenta la cantidad de eventos recibidos durante la prueba de concurrencia.
+
+## Funcionamiento del sistema
+
+El programa principal realiza tres pruebas:
+
+### 1. Despacho selectivo de eventos
+
+Se registran los microservicios según los tipos de alertas que necesitan recibir.
+
+Luego se publican dos eventos:
+
+- Una alerta de CPU al 92 % en el nodo A, que es recibida por los servicios de escalado y notificaciones.
+- Una alerta de fallo de disco en el nodo B, que es recibida por los servicios de respaldo y notificaciones.
+
+Esto demuestra que cada observador recibe únicamente los eventos a los que está suscrito.
+
+### 2. Aislamiento de errores
+
+Se publica una alerta crítica de memoria insuficiente en el nodo C.
+
+El microservicio de notificaciones tiene un error simulado: cuando recibe una alerta crítica de memoria, lanza una excepción porque el servidor SMTP no responde.
+
+Sin embargo, el bus captura ese error y continúa notificando a los demás observadores. Por eso, el microservicio de caché puede recibir y procesar el mismo evento aunque el servicio de notificaciones haya fallado.
+
+### 3. Procesamiento concurrente
+
+Se crea un segundo bus de eventos y se registra un `ContadorEventos` para escuchar las alertas de CPU.
+
+Luego se publican 200 eventos de forma asincrónica, utilizando un grupo de cuatro hilos de ejecución.
+
+Al finalizar, el programa muestra la cantidad de eventos recibidos por el contador. El resultado esperado es 200.
+
+## Manejo de concurrencia y errores
+
+Para permitir que el sistema trabaje con varios hilos, se utilizan distintas herramientas de Java:
+
+- **ConcurrentHashMap:** permite administrar las suscripciones de manera segura cuando hay operaciones concurrentes.
+- **CopyOnWriteArrayList:** permite recorrer las listas de observadores de forma segura mientras se realizan cambios en las suscripciones.
+- **ExecutorService:** administra un grupo de cuatro hilos para procesar eventos de manera asincrónica.
+- **AtomicInteger:** permite que el contador registre correctamente los eventos recibidos desde distintos hilos.
+
+Además, `BusEventos` utiliza un bloque `try-catch` al notificar a cada observador. Así, si uno falla, el resto puede continuar procesando el evento.
+
+## Resultado esperado
+
+Al ejecutar el programa, se puede observar:
+
+- La distribución selectiva de alertas según el tipo de evento.
+- La respuesta de los distintos microservicios.
+- El mensaje de error del servicio de notificaciones cuando falla el servidor SMTP.
+- La continuidad de los demás observadores a pesar de ese error.
+- El resultado de la prueba concurrente, con un total esperado de 200 eventos recibidos.
+
+## Captura de pantalla
+
+A continuación se muestra la captura de la ejecución del programa:
+
+![Resultado de la ejecución del ejercicio](Compilado.4.E1.09.png)
