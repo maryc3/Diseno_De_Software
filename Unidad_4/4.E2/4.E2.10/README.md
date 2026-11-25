@@ -1,54 +1,129 @@
-# 4.E.2 – Ejercicio 10: Sistema Empresarial de Cumplimiento Normativo y Auditoría de Riesgos
+# 4.E2.10 - Sistema de Notificación de Cambios en el Nivel de Riesgo de Cuentas Corporativas
 
-**Objetivo:** Observer robusto de grado empresarial: seguridad estricta, trazabilidad y protección contra fallos en cascada.
+## Descripción
 
-> Enunciado muy parecido al 10 de 4.E.1. Esta versión trabaja con **cuentas corporativas** y **entidades receptoras**, y usa **`ReentrantReadWriteLock`** (en lugar de `CopyOnWriteArrayList`) para proteger la lista, para mostrar otra técnica de seguridad multihilo.
+Este ejercicio consiste en desarrollar un sistema que permite notificar a distintas entidades cuando cambia el nivel de riesgo de una cuenta corporativa.
 
-## Archivos
+En un contexto financiero, una cuenta puede pasar de un nivel de riesgo bajo a uno medio, alto o crítico. Cuando esto sucede, diferentes áreas u organismos deben recibir la información para realizar las acciones correspondientes.
 
-| Archivo | Rol |
-|---|---|
-| `NivelRiesgoCuenta` | Enum: `BAJO`, `MEDIO`, `ALTO`, `CRITICO`. |
-| `CambioNivelRiesgo` | *Record*: cuenta, nivel anterior y nuevo. |
-| `EntidadReceptora` | **Interfaz Observer.** `notificar` puede lanzar excepción. |
-| `ResultadoNotificacion` | *Record*: entidad, éxito/fallo y detalle. |
-| `RegistroAuditoria` | *Record* **inmutable** con los resultados + utilidades `entidadesExitosas()` / `entidadesConIncidencias()`. |
-| `CuentaCorporativa` | **Sujeto.** |
-| `PrevencionLavadoDinero`, `AnalisisLegal`, `OrganismoRegulatorioInternacional` | Las tres entidades. El organismo **falla** (timeout) cuando el nuevo nivel es `ALTO`. |
-| `Main` | Éxito, fallo aislado, auditoría inmutable y prueba multihilo. |
+El sistema utiliza el patrón de diseño **Observer**, permitiendo que varias entidades estén registradas para recibir notificaciones cada vez que se modifica el nivel de riesgo de una cuenta.
 
-## Por qué está hecho así
-- **Ejecución secuencial y controlada:** `cambiarNivel` es `synchronized`, toma una **foto** de la lista bajo *read lock* y notifica **en orden**, una entidad por vez.
-- **`ReentrantReadWriteLock`:** muchos hilos pueden leer a la vez; registrar/quitar toma el *write lock* (exclusivo). Es la alternativa "manual" a `CopyOnWriteArrayList`.
-- **Aislamiento de errores:** `try/catch` por entidad; el fallo se registra y no frena a las demás.
-- **Registro inmutable:** `record` + `List.copyOf`. En `Main` se intenta agregar un resultado falso a un registro y salta `UnsupportedOperationException`.
-- **Multihilo:** 8 tareas en un `ExecutorService` registran entidades a la vez: resultado exacto de 11 (3 + 8).
+Además, incorpora mecanismos para controlar errores durante las notificaciones, mantener un registro de auditoría inmutable y permitir el registro de entidades de forma segura cuando trabajan varios hilos al mismo tiempo.
 
-## Cómo ejecutarlo
-Clic derecho sobre `src/unidad4/E2/Main.java` → **Run 'Main.main()'**.
+## Objetivo
 
-## Qué tiene que verse
-```
-=== Cambio 1: BAJO -> ALTO (el organismo internacional falla por timeout) ===
-   [AML] Monitoreo reforzado de la cuenta CTA-CORP-77 (BAJO -> ALTO)
-   [Legal] Analisis contractual abierto para CTA-CORP-77
-Notificadas con exito: [Prevencion de Lavado de Dinero, Analisis Legal]
-Con incidencias:       [Organismo Regulatorio Internacional]
-=== Cambio 2: ALTO -> MEDIO (todo funciona) ===
-   [AML] Monitoreo reforzado de la cuenta CTA-CORP-77 (ALTO -> MEDIO)
-   [Legal] Analisis contractual abierto para CTA-CORP-77
-   [Organismo] Reporte enviado sobre la cuenta CTA-CORP-77
-Notificadas con exito: [Prevencion de Lavado de Dinero, Analisis Legal, Organismo Regulatorio Internacional]
-Con incidencias:       []
-=== Auditoria inmutable ===
-Registros de auditoria: 2
-Intento de alterar un registro -> UnsupportedOperationException (correcto)
-=== Seguridad multihilo: 8 hilos registran entidades a la vez ===
-Entidades registradas: 11 (esperado: 11)
-```
+Aplicar el patrón Observer en un escenario empresarial, trabajando con los siguientes conceptos:
 
-## Requisitos cubiertos
-- [x] Registrar y disparar modificaciones de nivel con ejecución secuencial y controlada
-- [x] Registro inmutable de entidades notificadas con éxito y las que tuvieron incidencias
-- [x] Aislamiento de errores por observador
-- [x] Gestión interna de la lista segura en entornos multihilo
+- Notificación de múltiples entidades ante un cambio de estado.
+- Registro y eliminación de entidades receptoras.
+- Manejo individual de errores durante las notificaciones.
+- Registro de auditoría de los cambios realizados.
+- Protección de los datos frente a modificaciones externas.
+- Control de concurrencia mediante mecanismos de sincronización.
+
+## Aplicación del patrón Observer
+
+En este ejercicio, el patrón Observer permite que una cuenta corporativa informe a todas las entidades registradas cuando cambia su nivel de riesgo.
+
+La clase `CuentaCorporativa` funciona como el sujeto observable, ya que mantiene una lista de entidades interesadas en recibir las notificaciones.
+
+Las entidades receptoras implementan la interfaz `EntidadReceptora`, que define los métodos necesarios para identificarse y recibir los cambios.
+
+Cuando se modifica el nivel de riesgo, la cuenta genera un objeto `CambioNivelRiesgo` con el identificador de la cuenta, el nivel anterior y el nuevo nivel. Luego, notifica a las entidades registradas.
+
+De esta manera, la cuenta no necesita conocer los detalles internos de cada entidad ni las acciones que realiza después de recibir una notificación.
+
+## Estructura del proyecto
+
+El proyecto está compuesto por las siguientes clases:
+
+- **CuentaCorporativa:** representa la cuenta observable. Administra las entidades registradas, permite agregarlas o quitarlas y notifica los cambios de nivel de riesgo.
+
+- **EntidadReceptora:** interfaz que deben implementar las entidades interesadas en recibir notificaciones.
+
+- **CambioNivelRiesgo:** record que contiene el identificador de la cuenta, el nivel de riesgo anterior y el nuevo nivel.
+
+- **NivelRiesgoCuenta:** enum que define los niveles posibles de riesgo: BAJO, MEDIO, ALTO y CRITICO.
+
+- **PrevencionLavadoDinero:** representa el área de prevención de lavado de dinero. Al recibir una notificación, informa que se realizará un monitoreo reforzado de la cuenta.
+
+- **AnalisisLegal:** representa el área legal. Al recibir una notificación, informa que se inicia un análisis contractual.
+
+- **OrganismoRegulatorioInternacional:** representa un organismo externo que recibe información sobre los cambios de riesgo. En este ejercicio, genera intencionalmente un error cuando el nuevo nivel es ALTO.
+
+- **RegistroAuditoria:** almacena el cambio de riesgo y los resultados de las notificaciones realizadas. Sus datos no pueden modificarse después de su creación.
+
+- **ResultadoNotificacion:** registra el nombre de la entidad, si la notificación fue exitosa y el detalle del resultado.
+
+- **Main:** contiene el programa principal. Crea la cuenta, registra las entidades, realiza los cambios de riesgo y ejecuta las pruebas de auditoría y concurrencia.
+
+## Funcionamiento
+
+Al ejecutar el programa, se crea una cuenta corporativa identificada como `CTA-CORP-77`, cuyo nivel de riesgo inicial es BAJO.
+
+Luego se registran tres entidades receptoras:
+
+- Prevención de Lavado de Dinero.
+- Análisis Legal.
+- Organismo Regulatorio Internacional.
+
+### 1. Primer cambio de nivel de riesgo
+
+La cuenta cambia su nivel de riesgo de BAJO a ALTO.
+
+Las tres entidades reciben la notificación. Sin embargo, el Organismo Regulatorio Internacional genera intencionalmente una excepción de tipo `TimeoutException`, simulando que se agotó el tiempo de espera al intentar comunicarse con él.
+
+Este error no interrumpe el proceso completo, porque cada entidad se ejecuta dentro de su propio bloque `try-catch`.
+
+Por lo tanto, las otras entidades pueden completar sus acciones y el sistema registra tanto las notificaciones exitosas como las que tuvieron inconvenientes.
+
+### 2. Segundo cambio de nivel de riesgo
+
+La cuenta cambia de ALTO a MEDIO.
+
+En esta oportunidad, las tres entidades reciben correctamente la notificación, ya que el organismo internacional no genera el error para este nivel de riesgo.
+
+El sistema registra los resultados de este segundo cambio.
+
+### 3. Auditoría inmutable
+
+Después de realizar los cambios, se consulta el registro de auditoría.
+
+Este registro conserva la información de los cambios realizados y el resultado obtenido con cada entidad receptora.
+
+La clase `RegistroAuditoria` utiliza `List.copyOf()` para crear una lista que no puede modificarse.
+
+Para comprobarlo, el programa intenta agregar un resultado ficticio llamado "Intruso". Como la lista es inmutable, Java genera una excepción `UnsupportedOperationException`, que es capturada correctamente.
+
+Esto permite comprobar que los registros de auditoría no pueden alterarse desde el exterior.
+
+### 4. Seguridad multihilo
+
+Por último, se realiza una prueba de concurrencia.
+
+Se crea un `ExecutorService` con 8 hilos y se envían 8 tareas para registrar nuevas entidades en la cuenta al mismo tiempo.
+
+Para proteger la lista de entidades, la clase `CuentaCorporativa` utiliza `ReentrantReadWriteLock`.
+
+Este mecanismo permite que varias operaciones de lectura se realicen simultáneamente, mientras que las operaciones de escritura se ejecutan de manera exclusiva.
+
+Al finalizar las tareas, el programa consulta la cantidad de entidades registradas.
+
+El resultado esperado es 11: las 3 entidades iniciales más las 8 agregadas mediante los distintos hilos.
+
+## Resultado esperado
+
+Al ejecutar el programa, se deben observar los siguientes resultados:
+
+- En el primer cambio, dos entidades son notificadas correctamente y el organismo internacional presenta un error por tiempo de espera agotado.
+- En el segundo cambio, las tres entidades reciben correctamente la notificación.
+- El sistema registra los dos cambios realizados en la auditoría.
+- El intento de modificar un registro genera una `UnsupportedOperationException`, demostrando que la información es inmutable.
+- Los 8 hilos registran nuevas entidades sin generar conflictos.
+- Al finalizar, se obtiene un total de 11 entidades registradas.
+
+## Captura de pantalla
+
+A continuación se muestra la ejecución del programa:
+
+![Resultado de la ejecución del ejercicio](Compilado.4.E2.10.png)

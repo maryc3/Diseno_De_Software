@@ -1,44 +1,90 @@
-# 4.E.2 – Ejercicio 1: Notificador de Clic en Botón de Interfaz
+# 4.E2.01 – Notificador de Clic en Botón de Interfaz
 
-**Objetivo:** estructura básica del Observer (uno-a-muchos entre sujeto y observadores).
+## Descripción
 
-## Archivos
+Este ejercicio consiste en desarrollar un sistema de notificación que permita informar a distintos componentes cuando se produce un clic sobre un botón, utilizando el patrón de diseño **Observer**.
 
-| Archivo | Rol |
-|---|---|
-| `EventoClic` | *Record* con el id del botón y el número de clic. |
-| `OyenteClic` | **Interfaz Observer**, marcada `@FunctionalInterface`. |
-| `Boton` | **Sujeto.** `registrar`, `quitar` y `simularClic()`. |
-| `Ventana` | **No implementa la interfaz**: tiene un método `alClicGuardar(EventoClic)` que se registra como *referencia a método*. |
-| `RegistroClics` | Oyente como clase tradicional. |
-| `Main` | Registra los tres tipos de oyente. |
+El botón funciona como sujeto observable y mantiene una lista de oyentes interesados en recibir notificaciones. Cada vez que se simula un clic, genera un evento con información del botón y del número de clic, y lo comunica a todos los oyentes registrados.
 
-## Por qué está hecho así
-- El enunciado habla de "**registrar funciones o manejadores**": por eso la interfaz tiene **un solo método abstracto** y se pueden registrar clases, lambdas o `objeto::metodo`. Así funcionan los `ActionListener` de Swing/JavaFX.
-- El botón **no conoce la ventana**: solo guarda objetos `OyenteClic`. La ventana se entera del clic sin que el botón sepa nada de ella (restricción técnica 1).
-- Los oyentes se guardan en variables para poder **quitarlos** después (si se pasara una lambda "al vuelo" no habría referencia para quitarla).
+El sistema permite registrar y quitar oyentes sin que el botón tenga que conocer las clases concretas que reciben las notificaciones.
 
-## Cómo ejecutarlo
-Clic derecho sobre `src/unidad4/E2/Main.java` → **Run 'Main.main()'**.
+## Objetivo
 
-## Qué tiene que verse
-```
---- Clic 1 (3 oyentes) ---
-   [Ventana 'Editor de texto'] Boton 'btnGuardar' pulsado: guardando documento (guardado #1)
-   [Lambda] Se detecto el clic #1
-   [RegistroClics] Clic numero 1 en btnGuardar
---- Clic 2 (3 oyentes) ---
-   [Ventana 'Editor de texto'] Boton 'btnGuardar' pulsado: guardando documento (guardado #2)
-   [Lambda] Se detecto el clic #2
-   [RegistroClics] Clic numero 2 en btnGuardar
---- Se quita el oyente lambda ---
---- Clic 3 (2 oyentes) ---
-   [Ventana 'Editor de texto'] Boton 'btnGuardar' pulsado: guardando documento (guardado #3)
-   [RegistroClics] Clic numero 3 en btnGuardar
-```
+Aplicar el patrón Observer para:
 
-## Requisitos cubiertos
-- [x] Registrar funciones/manejadores interesados en el clic
-- [x] Notificar a todos los oyentes en cada clic simulado
-- [x] Colección interna genérica, sin acoplarse a ventanas concretas
-- [x] Interfaz común con el método de recepción del evento
+- Registrar diferentes oyentes interesados en los eventos de clic.
+- Notificar automáticamente a todos los oyentes cuando se produce un clic.
+- Permitir agregar y quitar oyentes.
+- Evitar el acoplamiento entre el botón y las clases que reciben las notificaciones.
+- Utilizar una interfaz común que permita registrar clases, expresiones lambda y referencias a métodos.
+
+## Aplicación del patrón Observer
+
+En este ejercicio, `Boton` funciona como el sujeto observable, ya que administra la lista de oyentes y se encarga de notificarles cada vez que ocurre un clic.
+
+Los observadores utilizan la interfaz `OyenteClic`, que define el método `alHacerClic()` para recibir la información del evento.
+
+Cuando se ejecuta `simularClic()`, el botón incrementa su contador, crea un objeto `EventoClic` y lo envía a todos los oyentes registrados.
+
+De esta manera, el botón no necesita conocer qué acciones realiza cada oyente. Solamente se encarga de comunicar que ocurrió un clic.
+
+## Estructura del proyecto
+
+Las clases principales son:
+
+- **Boton:** representa el sujeto observable. Administra los oyentes registrados, permite agregarlos y quitarlos, y notifica a todos cuando se simula un clic.
+- **OyenteClic:** interfaz funcional que define el método `alHacerClic()`. Permite utilizar clases tradicionales, expresiones lambda y referencias a métodos como observadores.
+- **EventoClic:** record que contiene la información del evento, incluyendo el identificador del botón y el número de clic.
+- **Ventana:** representa una ventana que recibe los eventos mediante el método `alClicGuardar()`. Este método se registra como referencia a método, sin necesidad de que la clase implemente directamente la interfaz `OyenteClic`.
+- **RegistroClics:** clase que implementa `OyenteClic` y muestra en consola el número de clic y el identificador del botón.
+- **Main:** contiene el programa principal. Crea el botón y los observadores, realiza las pruebas de notificación y elimina uno de los oyentes.
+
+## Funcionamiento del sistema
+
+El programa principal realiza tres pruebas:
+
+### 1. Registro de observadores
+
+Se crea un botón con el identificador `btnGuardar` y una ventana llamada `Editor de texto`.
+
+Luego se registran tres oyentes diferentes:
+
+- La ventana, mediante una referencia a método.
+- Una expresión lambda que muestra el número de clic detectado.
+- Una instancia de la clase `RegistroClics`.
+
+Esto demuestra que el sistema permite registrar distintos tipos de observadores utilizando una misma interfaz.
+
+### 2. Notificación de los clics
+
+Se simulan dos clics sobre el botón.
+
+En cada uno, los tres observadores reciben el evento y realizan sus respectivas acciones:
+
+- La ventana muestra que está guardando el documento.
+- La expresión lambda informa el número de clic.
+- `RegistroClics` muestra el identificador del botón y el número de clic registrado.
+
+### 3. Eliminación de un observador
+
+Luego se elimina la expresión lambda de la lista de oyentes.
+
+Finalmente, se simula un tercer clic. Esta vez solamente reciben la notificación la ventana y la instancia de `RegistroClics`.
+
+Esto demuestra que los observadores pueden dejar de recibir eventos cuando son eliminados del registro.
+
+## Resultado esperado
+
+Al ejecutar el programa, se puede observar:
+
+- El registro de tres observadores diferentes.
+- La notificación de los dos primeros clics a los tres oyentes.
+- El funcionamiento de la ventana, la expresión lambda y la clase `RegistroClics`.
+- La eliminación de uno de los observadores.
+- La notificación del tercer clic solamente a los dos oyentes restantes.
+
+## Captura de pantalla
+
+A continuación se muestra la captura de la ejecución del programa:
+
+![Resultado de la ejecución del ejercicio](Compilado.4.E2.01.png)
